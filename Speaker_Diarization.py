@@ -1,12 +1,14 @@
 import torch
 from pyannote.audio import Pipeline
+import numpy as np
 
-def speaker_diarization(audio_path,hf_token):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", 
-                                        use_auth_token=hf_token)
+def speaker_diarization(audio_path):
+    device = torch.device("cpu")
+    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
     pipeline.to(device)
-    diarization = pipeline(audio_path)
+    output = pipeline(audio_path)
+
+    diarization = output.speaker_diarization
     segments = []
     for turn, _, speaker in diarization.itertracks(yield_label=True):
         segments.append({
@@ -16,4 +18,3 @@ def speaker_diarization(audio_path,hf_token):
         })
     return segments
 
-MY_TOKEN = "hf_your_huggingface_token_here"  # Replace with your actual Hugging Face token

@@ -1,11 +1,13 @@
 import torch
 import os
 import whisper
+import json
 from pydub import AudioSegment
 
-def transcribe_audio(audio_path,speaker_segments,model_size="medium"):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = whisper.load_model(model_size).to(device)
+def transcribe_audio(audio_path,speaker_segments,model_size="base"):
+    device = torch.device("cpu")
+
+    model = whisper.load_model(model_size,device=device)
     
     # Load and preprocess the audio
     final_transcriptions = []
@@ -35,6 +37,7 @@ def transcribe_audio(audio_path,speaker_segments,model_size="medium"):
             speaker_audio.export(temp_audio_path, format="wav")
             result = model.transcribe(temp_audio_path)
             full_text = result["text"]
+            os.remove(temp_audio_path)
             
         final_transcriptions.append({
             "speaker": segment["speaker"],
@@ -42,8 +45,6 @@ def transcribe_audio(audio_path,speaker_segments,model_size="medium"):
             "end": segment["end"],
             "text": full_text.strip()
         })
-        
-        # Remove the temporary audio file
-        os.remove(temp_audio_path)
+                
     
     return final_transcriptions

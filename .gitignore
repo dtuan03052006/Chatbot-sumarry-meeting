@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.vscode/
+*.wav
+*.mp3
+*.pt
