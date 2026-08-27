@@ -1,0 +1,8 @@
+numpy
+torch
+torchaudio
+pydub
+sounddevice
+wavio
+openai-whisper
+pyannote.audio
