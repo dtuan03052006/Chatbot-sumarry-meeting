@@ -18,9 +18,12 @@ print("Processed audio saved at:", audio_process)
 
 diarization_result = speaker_diarization(audio_process)
 print("Diarization result:", diarization_result)
-
+for segment in diarization_result:
+        unique_speaker=set(segment["speaker"])
+        
+print("Number of speakers",len(unique_speaker))
 # Transcribe audio segments for each speaker
 transcriptions = transcribe_audio(audio_process, diarization_result, model_size="medium")
 with open("final_transcriptions.json", "w", encoding="utf-8") as json_file:
         json.dump(transcriptions, json_file, ensure_ascii=False, indent=4)
-print("Saved successfully file json: final_transcriptions.json")
+print("Saved successfully file json: final_transcriptions.json")        
