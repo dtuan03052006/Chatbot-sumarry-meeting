@@ -6,7 +6,6 @@ from pydub import AudioSegment
 
 def transcribe_audio(audio_path,speaker_segments,model_size="base"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     model = whisper.load_model(model_size,device=device)
     
     # Load and preprocess the audio
@@ -45,6 +44,4 @@ def transcribe_audio(audio_path,speaker_segments,model_size="base"):
             "end": segment["end"],
             "text": full_text.strip()
         })
-                
-    
     return final_transcriptions

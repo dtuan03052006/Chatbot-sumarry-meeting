@@ -18,10 +18,14 @@ print("Processed audio saved at:", audio_process)
 
 diarization_result = speaker_diarization(audio_process)
 print("Diarization result:", diarization_result)
+
+unique_speakers = set() 
+
 for segment in diarization_result:
-        unique_speaker=set(segment["speaker"])
-        
-print("Number of speakers",len(unique_speaker))
+
+    unique_speakers.add(segment["speaker"]) 
+
+print("Number of speakers",len(unique_speakers))
 # Transcribe audio segments for each speaker
 transcriptions = transcribe_audio(audio_process, diarization_result, model_size="medium")
 for trans in transcriptions:
