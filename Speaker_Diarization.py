@@ -18,3 +18,4 @@ def speaker_diarization(audio_path):
         })
     return segments
 
+#thu model khac nhau,cac ngon ngu khac

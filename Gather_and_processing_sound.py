@@ -53,7 +53,6 @@ def remove_silence(audio_path,output_path):
         audio=wav[start:end]
         chunks.append(audio)
     speech_audio=torch.cat(chunks)
-
     save_audio(output_path, speech_audio, sampling_rate=16000)
     return output_path
 
