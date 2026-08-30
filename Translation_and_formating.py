@@ -32,7 +32,7 @@ def segments_to_text(segments):
         speaker=segment["speaker"]
         text = segment["text"].strip()
         if(text):
-            formatted_text.append(f"[{start_time} - {end_time}] {speaker}: {text}\n")
+            formatted_text+=(f"[{start_time} - {end_time}] {speaker}: {text}\n")
     return "\n".join(formatted_text)
 
 def split_into_batches(segments, word_limit):

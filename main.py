@@ -32,4 +32,5 @@ for trans in transcriptions:
   print(trans)
 with open("final_transcriptions.json", "w", encoding="utf-8") as json_file:
         json.dump(transcriptions, json_file, ensure_ascii=False, indent=4)
-print("Saved successfully file json: final_transcriptions.json")        
+print("Saved successfully file json: final_transcriptions.json") 
+       
