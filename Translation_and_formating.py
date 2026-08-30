@@ -56,31 +56,27 @@ def build_translation_prompt(
     raw_text: str,
     target_language: str
 ) -> str:
+    return f"""### TRANSLATION TASK – MANDATORY ###
 
-    return f"""Bạn là trợ lý xử lý biên bản cuộc họp chuyên nghiệp.
+You MUST translate every line below into {target_language}.
+This is NOT optional. You are FORBIDDEN from returning the original language.
 
-Mỗi dòng có định dạng:
+INPUT FORMAT (do not change this structure):
+[HH:MM:SS - HH:MM:SS] SPEAKER_XX: <text>
 
-[HH:MM:SS - HH:MM:SS] SPEAKER_XX: <nội dung>
+STRICT RULES – VIOLATION IS NOT ALLOWED:
+1. TRANSLATE every word after the colon into {target_language}. No exceptions.
+2. KEEP timestamps exactly as-is (e.g. [00:01:23 - 00:01:30]).
+3. KEEP speaker labels exactly as-is (e.g. SPEAKER_00).
+4. OUTPUT the same number of lines as the input. Never merge or split lines.
+5. Do NOT add any explanation, notes, or extra text.
+6. Do NOT repeat the original language in the output.
+7. If a word is a proper noun or technical term, keep it but translate the rest.
 
-NHIỆM VỤ:
-
-1. Dịch toàn bộ nội dung sang {target_language}.
-2. Sửa lỗi chính tả và lỗi nhận diện giọng nói nếu có thể xác định rõ.
-3. GIỮ NGUYÊN timestamp.
-4. GIỮ NGUYÊN speaker.
-5. KHÔNG thêm hoặc bịa thông tin.
-6. KHÔNG gộp dòng.
-7. KHÔNG tách dòng.
-8. Số dòng đầu ra phải bằng số dòng đầu vào.
-9. Chỉ trả về nội dung đã xử lý, không giải thích.
-
-BIÊN BẢN THÔ:
-
+### INPUT TRANSCRIPT (translate this NOW):
 {raw_text}
 
-BIÊN BẢN ĐÃ XỬ LÝ:
-"""
+### OUTPUT IN {target_language} (translated lines only, no extra text):"""
 
 
 def translate_batch_with_llm(   
@@ -95,7 +91,7 @@ def translate_batch_with_llm(
             response=client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role":"system","content":"Ban là chuyên gia dịch thuật, luôn trả về đúng định dạng yêu cầu."},
+                    {"role": "system", "content": "You are a strict professional translator. Your ONLY job is to translate text into the target language. You MUST translate every single line. Never return the original language. Never skip lines. Never add explanations."},
                     {"role":"user","content":prompt}],
                 temperature=0.2,
                 max_tokens=4096

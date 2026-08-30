@@ -1,6 +1,7 @@
 from Gather_and_processing_sound import process_audio
 from Speaker_Diarization import speaker_diarization
 from transform_speed_to_text import transcribe_audio
+from Translation_and_formating import translate_and_format_transcript
 import os
 import json
 from pydub import AudioSegment
@@ -33,4 +34,5 @@ for trans in transcriptions:
 with open("final_transcriptions.json", "w", encoding="utf-8") as json_file:
         json.dump(transcriptions, json_file, ensure_ascii=False, indent=4)
 print("Saved successfully file json: final_transcriptions.json") 
-       
+text,data = translate_and_format_transcript()
+print("Completed create translate file json and text.") 
