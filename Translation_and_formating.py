@@ -25,14 +25,14 @@ def format_time(seconds):
 
 def segments_to_text(segments):
     """Chuyển đổi danh sách segments thành văn bản định dạng"""
-    formatted_text = ""
+    formatted_text = []
     for segment in segments:
         start_time = format_time(segment["start"])
         end_time = format_time(segment["end"])
         speaker=segment["speaker"]
         text = segment["text"].strip()
         if(text):
-            formatted_text+=(f"[{start_time} - {end_time}] {speaker}: {text}\n")
+            formatted_text.append(f"[{start_time} - {end_time}] {speaker}: {text}\n")
     return "\n".join(formatted_text)
 
 def split_into_batches(segments, word_limit):
@@ -89,20 +89,20 @@ def translate_batch_with_llm(
         target_language: str,
         model: str = MODEL_NAME,
         max_retries: int = 3,)-> str:
-    prtomt=build_translation_prompt(raw_text, target_language)
+    prompt=build_translation_prompt(raw_text, target_language)
     for i in range(1,max_retries+1):
         try:
             response=client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role":"system","content":"Ban là chuyên gia dịch thuật, luôn trả về đúng định dạng yêu cầu."},
-                    {"role":"user","content":prtomt}],
+                    {"role":"user","content":prompt}],
                 temperature=0.2,
-                max_tokens=4069
+                max_tokens=4096
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            if "rate limit" in str(e).lower() and i < max_retries:
+            if "rate_limit" in str(e).lower() and i < max_retries:
                 wait_time = 2 ** i
                 print(f"Rate limit, waiting {wait_time} seconds before retrying...")
                 time.sleep(wait_time)
