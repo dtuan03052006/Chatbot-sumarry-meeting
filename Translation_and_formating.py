@@ -134,7 +134,7 @@ def translate_and_format_transcript(
 ) -> tuple[str, list[dict]]:
     
     segments = load_transcript(input_json)
-    batches = split_into_batches(segments)
+    batches = split_into_batches(segments,word_limit=BATCH_WORD_LIMIT)
 
     client = OpenAI(
         base_url="http://localhost:11434/v1",
