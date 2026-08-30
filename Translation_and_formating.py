@@ -52,20 +52,35 @@ def split_into_batches(segments, word_limit):
         batches.append(current_batch)
     return batches
 
-def build_translation_prompt(raw_text: str, target_language: str) -> str:
-    """Prompt được thiết kế để LLM chỉ trả về văn bản đã dịch, không bổ sung / bớt."""
+def build_translation_prompt(
+    raw_text: str,
+    target_language: str
+) -> str:
+
     return f"""Bạn là trợ lý xử lý biên bản cuộc họp chuyên nghiệp.
-Dưới đây là đoạn biên bản cuộc họp thô, mỗi dòng có định dạng:
-[MM:SS] SPEAKER_XX: <nội dung>
-NHIỆM VỤ CỦA BẠN:
+
+Mỗi dòng có định dạng:
+
+[HH:MM:SS - HH:MM:SS] SPEAKER_XX: <nội dung>
+
+NHIỆM VỤ:
+
 1. Dịch toàn bộ nội dung sang {target_language}.
-2. Sửa các lỗi chính tả / lỗi nhận diện (tên riêng, từ lạ...).
-3. GIỮ NGUYÊN định dạng mỗi dòng: [MM:SS] SPEAKER_XX: <nội dung đã dịch>.
-4. KHÔNG thêm, bớt, hoặc bịa thông tin không có trong bản gốc.
-5. KHÔNG gộp hay tách dòng — giữ nguyên số dòng.
+2. Sửa lỗi chính tả và lỗi nhận diện giọng nói nếu có thể xác định rõ.
+3. GIỮ NGUYÊN timestamp.
+4. GIỮ NGUYÊN speaker.
+5. KHÔNG thêm hoặc bịa thông tin.
+6. KHÔNG gộp dòng.
+7. KHÔNG tách dòng.
+8. Số dòng đầu ra phải bằng số dòng đầu vào.
+9. Chỉ trả về nội dung đã xử lý, không giải thích.
+
 BIÊN BẢN THÔ:
+
 {raw_text}
-BIÊN BẢN ĐÃ XỬ LÝ (chỉ trả về nội dung, không giải thích thêm):"""
+
+BIÊN BẢN ĐÃ XỬ LÝ:
+"""
 
 
 def translate_batch_with_llm(   
@@ -112,7 +127,7 @@ def parse_translated_text_to_json(translated_text, original_segments):
                 if(idx < len(original_segments)):
                     src=original_segments[idx]
                     results.append({
-                        "speaker" : src[speaker],
+                        "speaker" : src["speaker"],
                         "start" : src["start"],
                         "end" : src["end"],
                         "text_original" : src["text"],
