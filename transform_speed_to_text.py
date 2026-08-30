@@ -4,11 +4,11 @@ import whisper
 import json
 from pydub import AudioSegment
 
-def transcribe_audio(audio_path,speaker_segments,model_size="base"):
+def transcribe_audio(audio_path,speaker_segments,model_size):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = whisper.load_model(model_size)
-    if torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model)
+    # if torch.cuda.device_count() > 1:
+    #     model = torch.nn.DataParallel(model)
     model = model.to(device)
     # Load and preprocess the audio
     final_transcriptions = []
