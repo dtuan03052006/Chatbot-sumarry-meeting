@@ -10,6 +10,7 @@ def transcribe_audio(audio_path,speaker_segments,model_size):
     # if torch.cuda.device_count() > 1:
     #     model = torch.nn.DataParallel(model)
     model = model.to(device)
+    
     # Load and preprocess the audio
     final_transcriptions = []
     audio = AudioSegment.from_file(audio_path)

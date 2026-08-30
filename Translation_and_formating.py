@@ -128,8 +128,8 @@ def parse_translated_text_to_json(translated_text, original_segments):
                     src=original_segments[idx]
                     results.append({
                         "speaker" : src["speaker"],
-                        "start" : src["start"],
-                        "end" : src["end"],
+                        "start" : format_time(src["start"]),
+                        "end" : format_time(src["end"]),
                         "text_original" : src["text"],
                         "text_translated" : text
                     })
