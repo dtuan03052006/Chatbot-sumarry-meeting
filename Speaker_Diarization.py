@@ -5,8 +5,6 @@ import numpy as np
 def speaker_diarization(audio_path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
-    if torch.cuda.device_count() > 1:
-        pipeline = torch.nn.DataParallel(pipeline)
     pipeline.to(device)
     output = pipeline(audio_path,min_speakers=2,max_speakers=10)
 
