@@ -84,26 +84,38 @@ def translate_batch_with_llm(
         raw_text: str,
         target_language: str,
         model: str = MODEL_NAME,
-        max_retries: int = 3,)-> str:
-    prompt=build_translation_prompt(raw_text, target_language)
-    for i in range(1,max_retries+1):
+        max_retries: int = 3,) -> str:
+    import requests
+    prompt = build_translation_prompt(raw_text, target_language)
+
+    for i in range(1, max_retries + 1):
         try:
-            response=client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": "You are a strict professional translator. Your ONLY job is to translate text into the target language. You MUST translate every single line. Never return the original language. Never skip lines. Never add explanations."},
-                    {"role":"user","content":prompt}],
-                temperature=0.2,
-                max_tokens=4096
+            # Dùng Ollama /api/generate thay vì chat.completions
+            # → hoạt động với cả model "completion-only" (gemma3:4b)
+            resp = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model":  model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.1,
+                        "num_predict": 4096,
+                    }
+                },
+                timeout=120
             )
-            return response.choices[0].message.content.strip()
+            resp.raise_for_status()
+            # Fix lỗi 2: dùng .get() → không bao giờ None → .strip() an toàn
+            return resp.json().get("response", "").strip()
         except Exception as e:
-            if "rate_limit" in str(e).lower() and i < max_retries:
+            if i < max_retries:
                 wait_time = 2 ** i
                 print(f"Rate limit, waiting {wait_time} seconds before retrying...")
                 time.sleep(wait_time)
             else:
                 raise RuntimeError(f"LLM call failed: {e}")
+    return ""
 
 def parse_translated_text_to_json(translated_text, original_segments):
     """Chuyển đổi văn bản đã dịch thành danh sách dict với định dạng chuẩn"""
