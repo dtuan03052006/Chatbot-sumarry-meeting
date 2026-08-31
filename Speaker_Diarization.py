@@ -10,7 +10,7 @@ def speaker_diarization(audio_path):
 
     diarization = output.speaker_diarization
     segments = []
-    for turn, speaker in diarization.itertracks(yield_label=True):
+    for turn,_, speaker in diarization.itertracks(yield_label=True):
         segments.append({
             "speaker": speaker,
             "start": round(turn.start, 2),

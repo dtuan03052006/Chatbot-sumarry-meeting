@@ -11,7 +11,6 @@ MODEL_NAME       = "gemma3:4b"
 TARGET_LANGUAGE  = "Tiếng Việt"
 CHUNK_WORD_LIMIT = 500          # số từ mỗi chunk MAP
 INPUT_JSON       = "formatted_transcript.json"
-OUTPUT_TXT       = "meeting_summary.txt"
 OUTPUT_JSON      = "meeting_summary.json"
 
 def load_formatted_script(json_path):
@@ -136,7 +135,6 @@ def summarize_per_speaker(segments):
 
 def summarize_meeting(
     input_json:   str = INPUT_JSON,
-    output_txt:   str = OUTPUT_TXT,
     output_json:  str = OUTPUT_JSON,
     target_lang:  str = TARGET_LANGUAGE,
 ) -> Dict:
