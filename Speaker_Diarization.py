@@ -8,12 +8,16 @@ def speaker_diarization(audio_path):
     output = pipeline(audio_path, min_speakers=1, max_speakers=8)
 
     segments = []
-    for item in output.itertracks(yield_label=True):
-        turn    = item[0]    # Segment – luôn là phần tử đầu tiên
-        speaker = item[-1]   # label   – luôn là phần tử cuối cùng
-        segments.append({
-            "speaker": speaker,
-            "start":   round(turn.start, 2),
-            "end":     round(turn.end,   2),
-        })
+
+    # Dung label_timeline() - tranh itertracks(yield_label=True) bi loi tren Kaggle
+    for speaker in output.labels():
+        for segment, _ in output.label_timeline(speaker).itertracks():
+            segments.append({
+                "speaker": speaker,
+                "start":   round(segment.start, 2),
+                "end":     round(segment.end,   2),
+            })
+
+    # Sap xep theo thoi gian bat dau
+    segments.sort(key=lambda x: x["start"])
     return segments
