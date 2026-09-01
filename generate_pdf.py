@@ -169,8 +169,9 @@ def export_summary_to_pdf(
             pdf.ln(2)
 
     pdf.output(output_pdf)
-    print(f"\nĐÃ XUẤT FILE PDF TIẾNG VIỆT THÀNH CÔNG: '{output_pdf}'")
+    print(f"\n🎉 ĐÃ XUẤT FILE PDF TIẾNG VIỆT THÀNH CÔNG: '{output_pdf}'")
     return output_pdf
 
 
-
+if __name__ == "__main__":
+    export_summary_to_pdf()
