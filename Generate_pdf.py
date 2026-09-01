@@ -1,10 +1,14 @@
 """
 Bước 6: Xuất file PDF tóm tắt cuộc họp (PDF Generation)
 ---------------------------------------------------------
-Đầu vào  : meeting_summary.json (từ Bước 5)
+Đầu vào  : meeting_summary.json (output từ Bước 5)
 Đầu ra   : Meeting_Summary.pdf
 
-Hỗ trợ 100% tiếng Việt có dấu chuẩn đẹp qua font BeVietnamPro (Google Fonts).
+Tính năng:
+  - Hỗ trợ 100% tiếng Việt có dấu qua font BeVietnamPro (Google Fonts).
+  - Tự động tải font nếu máy chưa có.
+  - Phân trang, header, footer đánh số trang tự động.
+  - Lọc bỏ ký tự Markdown thô và các câu thoại tiếng Anh thừa của AI.
 """
 
 import json
@@ -13,6 +17,9 @@ import re
 import urllib.request
 from fpdf import FPDF
 
+# -------------------------------------------------
+# Cấu hình mặc định
+# -------------------------------------------------
 INPUT_JSON  = "meeting_summary.json"
 OUTPUT_PDF  = "Meeting_Summary.pdf"
 
@@ -25,12 +32,12 @@ URL_BOLD    = "https://github.com/google/fonts/raw/main/ofl/bevietnampro/BeVietn
 
 
 def get_font_paths() -> tuple[str, str]:
-    """Tự động tải font BeVietnamPro (Google Fonts) hỗ trợ 100% tiếng Việt"""
-    # 1. Kiểm tra nếu font đã có sẵn trong thư mục
+    """Tự động kiểm tra hoặc tải font BeVietnamPro chuẩn tiếng Việt"""
+    # 1. Kiểm tra nếu font đã có sẵn trong thư mục dự án
     if os.path.exists(FONT_REGULAR) and os.path.exists(FONT_BOLD):
         return FONT_REGULAR, FONT_BOLD
 
-    # 2. Kiểm tra các font hệ thống
+    # 2. Kiểm tra các font hệ thống Linux / Kaggle
     system_candidates = [
         ("/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf"),
         ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
@@ -39,7 +46,7 @@ def get_font_paths() -> tuple[str, str]:
         if os.path.exists(reg) and os.path.exists(bld):
             return reg, bld
 
-    # 3. Tải font BeVietnamPro từ Google Fonts CDN
+    # 3. Tải font BeVietnamPro trực tiếp từ Google Fonts CDN
     print("⏳ Đang tải font tiếng Việt BeVietnamPro từ Google Fonts...")
     try:
         urllib.request.urlretrieve(URL_REGULAR, FONT_REGULAR)
@@ -47,12 +54,12 @@ def get_font_paths() -> tuple[str, str]:
         print("✅ Tải font thành công!")
         return FONT_REGULAR, FONT_BOLD
     except Exception as e:
-        print(f"⚠️ Lỗi tải font: {e}")
+        print(f"⚠️ Không thể tải font qua mạng: {e}")
         return None, None
 
 
 class MeetingPDF(FPDF):
-    """Class tạo PDF có Header và Footer"""
+    """Custom PDF class có Header và Footer chuyên nghiệp"""
     def __init__(self, font_name="VietFont", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.font_name = font_name
@@ -88,7 +95,7 @@ def clean_line(text: str) -> str:
 
 
 def find_input_json(input_json: str) -> str:
-    """Tìm file JSON ở các vị trí khả dĩ trên Kaggle/máy cá nhân"""
+    """Tìm file JSON ở các vị trí khả dĩ trên máy/Kaggle"""
     candidates = [
         input_json,
         os.path.join(os.getcwd(), input_json),
@@ -107,6 +114,9 @@ def export_summary_to_pdf(
     output_pdf: str = OUTPUT_PDF,
     meeting_title: str = "BIÊN BẢN CUỘC HỌP TỔNG HỢP",
 ) -> str:
+    """
+    Hàm xuất dữ liệu từ meeting_summary.json ra file PDF chuẩn tiếng Việt
+    """
     resolved_json = find_input_json(input_json)
     if not os.path.exists(resolved_json):
         raise FileNotFoundError(f"Không tìm thấy file '{input_json}'!")
@@ -118,7 +128,7 @@ def export_summary_to_pdf(
     per_speaker = data.get("per_speaker", {})
     speakers = data.get("speakers", [])
 
-    # Chuẩn bị font tiếng Việt
+    # Chuẩn bị font chữ tiếng Việt
     reg_font, bold_font = get_font_paths()
     font_name = "VietFont"
 
@@ -134,19 +144,19 @@ def export_summary_to_pdf(
 
     pdf.add_page()
 
-    # 1. TIÊU ĐỀ
+    # 1. TIÊU ĐỀ CHÍNH
     pdf.set_font(font_name, "B", 16)
-    pdf.set_text_color(24, 76, 120)
+    pdf.set_text_color(24, 76, 120)  # Xanh dương đậm
     pdf.cell(0, 10, meeting_title, align="C")
     pdf.ln(10)
 
-    # Người tham gia
+    # Thông tin người tham gia
     pdf.set_font(font_name, "", 10)
     pdf.set_text_color(80, 80, 80)
     pdf.cell(0, 6, f"Người tham gia: {', '.join(speakers) if speakers else 'Không xác định'}", align="C")
     pdf.ln(6)
 
-    # Đường phân cách
+    # Đường kẻ ngang phân cách
     pdf.set_draw_color(24, 76, 120)
     pdf.set_line_width(0.5)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
@@ -159,6 +169,7 @@ def export_summary_to_pdf(
         if not line:
             continue
 
+        # Tiêu đề mục (## ...)
         if raw_line.strip().startswith("##"):
             pdf.ln(3)
             pdf.set_font(font_name, "B", 12)
@@ -166,6 +177,7 @@ def export_summary_to_pdf(
             pdf.cell(0, 7, line.replace("#", "").strip())
             pdf.ln(7)
 
+        # Gạch đầu dòng (• ...)
         elif raw_line.strip().startswith(("*", "-", "•")):
             bullet_text = line.lstrip("*-• ").strip()
             pdf.set_font(font_name, "", 10)
@@ -174,6 +186,7 @@ def export_summary_to_pdf(
             pdf.multi_cell(0, 5.5, f"•  {bullet_text}")
             pdf.ln(1)
 
+        # Đoạn văn thông thường
         else:
             pdf.set_font(font_name, "", 10)
             pdf.set_text_color(30, 30, 30)
@@ -206,9 +219,11 @@ def export_summary_to_pdf(
                 pdf.ln(1)
             pdf.ln(2)
 
+    # Xuất file
     pdf.output(output_pdf)
-    print(f"\nĐÃ XUẤT FILE PDF TIẾNG VIỆT THÀNH CÔNG: '{output_pdf}'")
+    print(f"\n ĐÃ XUẤT FILE PDF TIẾNG VIỆT THÀNH CÔNG: '{output_pdf}'")
     return output_pdf
 
 
-
+if __name__ == "__main__":
+    export_summary_to_pdf()
