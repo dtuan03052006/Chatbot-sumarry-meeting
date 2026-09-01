@@ -1,13 +1,13 @@
 """
 Bước 6: Xuất file PDF tóm tắt cuộc họp (PDF Generation)
 ---------------------------------------------------------
-Yêu cầu: fpdf2 (pip install fpdf2)
-Hỗ trợ 100% tiếng Việt có dấu.
+Hỗ trợ 100% tiếng Việt có dấu (Unicode) không bao giờ bị ô vuông.
 """
 
 import json
 import os
 import re
+import glob
 import urllib.request
 from fpdf import FPDF
 
@@ -15,54 +15,95 @@ INPUT_JSON  = "meeting_summary.json"
 OUTPUT_PDF  = "Meeting_Summary.pdf"
 
 FONT_DIR = os.path.dirname(os.path.abspath(__file__))
-FONT_REGULAR_PATH = os.path.join(FONT_DIR, "Roboto-Regular.ttf")
-FONT_BOLD_PATH    = os.path.join(FONT_DIR, "Roboto-Bold.ttf")
+LOCAL_REGULAR = os.path.join(FONT_DIR, "DejaVuSans.ttf")
+LOCAL_BOLD    = os.path.join(FONT_DIR, "DejaVuSans-Bold.ttf")
 
 
-def get_unicode_fonts():
-    """Lấy đường dẫn font Unicode tiếng Việt"""
-    # 1. Font hệ thống
-    system_paths = [
+def find_unicode_font():
+    """Tự động tìm hoặc tải font DejaVuSans hỗ trợ 100% tiếng Việt"""
+    # 1. Các đường dẫn phổ biến trên các bản phân phối Linux (Ubuntu, Debian, Arch, Kaggle, Colab)
+    known_paths = [
+        ("/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf"),
         ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+        ("/usr/share/fonts/dejavu/DejaVuSans.ttf", "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"),
         ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
     ]
-    for reg, bld in system_paths:
-        if os.path.exists(reg) and os.path.exists(bld):
-            return reg, bld
+    for reg, bld in known_paths:
+        if os.path.exists(reg):
+            bld_path = bld if os.path.exists(bld) else reg
+            print(f" Đã tìm thấy font hệ thống: {reg}")
+            return reg, bld_path
 
-    # 2. Font tải về local
-    if os.path.exists(FONT_REGULAR_PATH) and os.path.exists(FONT_BOLD_PATH):
-        return FONT_REGULAR_PATH, FONT_BOLD_PATH
+    # 2. Tìm kiếm tự động toàn bộ thư mục /usr/share/fonts
+    all_ttfs = glob.glob("/usr/share/fonts/**/*.ttf", recursive=True)
+    dejavu_regs = [f for f in all_ttfs if os.path.basename(f).lower() in ("dejavusans.ttf", "opensans-regular.ttf", "liberationsans-regular.ttf")]
+    if dejavu_regs:
+        reg = dejavu_regs[0]
+        bld_matches = [f for f in all_ttfs if "bold" in os.path.basename(f).lower() and os.path.dirname(f) == os.path.dirname(reg)]
+        bld = bld_matches[0] if bld_matches else reg
+        print(f" Đã quét thấy font: {reg}")
+        return reg, bld
 
-    # 3. Tải font Roboto về
-    print("⏳ Đang tải font chữ tiếng Việt (Roboto)...")
+    # 3. Kiểm tra file font đã tải về thư mục dự án
+    if os.path.exists(LOCAL_REGULAR):
+        bld = LOCAL_BOLD if os.path.exists(LOCAL_BOLD) else LOCAL_REGULAR
+        return LOCAL_REGULAR, bld
+
+    # 4. Tải trực tiếp font DejaVuSans từ CDN chính thức
+    print("Đang tải font DejaVuSans tiếng Việt về máy...")
     try:
-        urllib.request.urlretrieve("https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Regular.ttf", FONT_REGULAR_PATH)
-        urllib.request.urlretrieve("https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Bold.ttf", FONT_BOLD_PATH)
-        return FONT_REGULAR_PATH, FONT_BOLD_PATH
+        urllib.request.urlretrieve(
+            "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf",
+            LOCAL_REGULAR
+        )
+        urllib.request.urlretrieve(
+            "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans-Bold.ttf",
+            LOCAL_BOLD
+        )
+        print(" Đã tải font thành công!")
+        return LOCAL_REGULAR, LOCAL_BOLD
     except Exception as e:
-        print(f"⚠️ Lỗi tải font: {e}")
+        print(f" Không thể tải font: {e}")
         return None, None
 
 
 class MeetingPDF(FPDF):
+    def __init__(self, font_name="DejaVu", *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.font_name = font_name
+
     def header(self):
-        self.set_font("Roboto", "B", 10)
-        self.set_text_color(120, 120, 120)
+        self.set_font(self.font_name, "B", 10)
+        self.set_text_color(100, 100, 100)
         self.cell(0, 8, "AI MEETING ASSISTANT - BIÊN BẢN TÓM TẮT CUỘC HỌP", border="B", align="L")
         self.ln(6)
 
     def footer(self):
         self.set_y(-15)
-        self.set_font("Roboto", "", 8)
+        self.set_font(self.font_name, "", 8)
         self.set_text_color(150, 150, 150)
         self.cell(0, 10, f"Trang {self.page_no()}/{{nb}}", align="C")
 
 
-def clean_markdown_line(line: str) -> str:
-    line = re.sub(r"\*\*(.*?)\*\*", r"\1", line)
-    line = re.sub(r"[\*_](.*?)[\*_]", r"\1", line)
-    return line.strip()
+def clean_line(text: str) -> str:
+    """Lọc sạch ký tự markdown và câu nói thừa của AI"""
+    # Bỏ qua các câu mào đầu tiếng Anh do AI sinh ra
+    skip_phrases = [
+        "okay, here's a summary",
+        "okay, here’s a summary",
+        "would you like me to elaborate",
+        "translation of the bullet points",
+        "explanation of the summary",
+        "here is a summary",
+    ]
+    low = text.strip().lower()
+    for phrase in skip_phrases:
+        if low.startswith(phrase) or phrase in low:
+            return ""
+
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+    text = re.sub(r"[\*_](.*?)[\*_]", r"\1", text)
+    return text.strip()
 
 
 def export_summary_to_pdf(
@@ -80,88 +121,86 @@ def export_summary_to_pdf(
     per_speaker = data.get("per_speaker", {})
     speakers = data.get("speakers", [])
 
-    reg_font, bold_font = get_unicode_fonts()
+    reg_font, bold_font = find_unicode_font()
+    if not reg_font:
+        raise RuntimeError("Không tìm thấy font Unicode tiếng Việt!")
 
-    pdf = MeetingPDF(orientation="P", unit="mm", format="A4")
+    font_name = "DejaVu"
+    pdf = MeetingPDF(font_name=font_name, orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=18)
 
-    # Đăng ký font Roboto
-    if reg_font:
-        pdf.add_font("Roboto", "", reg_font)
-        pdf.add_font("Roboto", "B", bold_font if bold_font else reg_font)
-    else:
-        pdf.set_fallback_fonts(["Helvetica"])
+    # Đăng ký font DejaVuSans chuẩn Unicode
+    pdf.add_font(font_name, "", reg_font)
+    pdf.add_font(font_name, "B", bold_font)
 
     pdf.add_page()
 
     # 1. TIÊU ĐỀ
-    pdf.set_font("Roboto", "B", 16)
+    pdf.set_font(font_name, "B", 16)
     pdf.set_text_color(24, 76, 120)
     pdf.cell(0, 10, meeting_title, align="C")
     pdf.ln(10)
 
     # Người tham gia
-    pdf.set_font("Roboto", "", 10)
+    pdf.set_font(font_name, "", 10)
     pdf.set_text_color(80, 80, 80)
     pdf.cell(0, 6, f"Người tham gia: {', '.join(speakers) if speakers else 'Không xác định'}", align="C")
     pdf.ln(6)
 
-    # Đường phân cách
+    # Đường kẻ phân cách
     pdf.set_draw_color(24, 76, 120)
     pdf.set_line_width(0.5)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(6)
 
-    # 2. IN TỔNG QUAN
+    # 2. PHẦN TỔNG QUAN
     lines = overall_summary.replace("\\n", "\n").split("\n")
-
     for raw_line in lines:
-        line = clean_markdown_line(raw_line)
+        line = clean_line(raw_line)
         if not line:
-            pdf.ln(2)
             continue
 
         if raw_line.strip().startswith("##"):
             pdf.ln(3)
-            pdf.set_font("Roboto", "B", 12)
+            pdf.set_font(font_name, "B", 12)
             pdf.set_text_color(24, 76, 120)
             pdf.cell(0, 7, line.replace("#", "").strip())
             pdf.ln(7)
 
         elif raw_line.strip().startswith(("*", "-", "•")):
             bullet_text = line.lstrip("*-• ").strip()
-            pdf.set_font("Roboto", "", 10)
+            pdf.set_font(font_name, "", 10)
             pdf.set_text_color(30, 30, 30)
             pdf.set_x(20)
             pdf.multi_cell(170, 5.5, f"•  {bullet_text}")
             pdf.ln(1)
 
         else:
-            pdf.set_font("Roboto", "", 10)
+            pdf.set_font(font_name, "", 10)
             pdf.set_text_color(30, 30, 30)
             pdf.multi_cell(180, 5.5, line)
-            pdf.ln(1.5)
+            pdf.ln(2)
 
-    # 3. IN THEO TỪNG SPEAKER
+    # 3. PHẦN TỪNG SPEAKER
     if per_speaker:
         pdf.ln(4)
-        pdf.set_font("Roboto", "B", 12)
+        pdf.set_font(font_name, "B", 12)
         pdf.set_text_color(24, 76, 120)
         pdf.cell(0, 7, "V. CHI TIẾT Ý KIẾN TỪNG NGƯỜI NÓI")
         pdf.ln(7)
 
         for sp, summary_text in per_speaker.items():
-            pdf.set_font("Roboto", "B", 10.5)
+            pdf.set_font(font_name, "B", 10.5)
             pdf.set_text_color(40, 116, 166)
             pdf.cell(0, 6, f"Ý kiến của {sp}:")
             pdf.ln(6)
 
             sp_lines = summary_text.replace("\\n", "\n").split("\n")
             for sp_raw in sp_lines:
-                sp_clean = clean_markdown_line(sp_raw)
+                sp_clean = clean_line(sp_raw)
                 if not sp_clean:
                     continue
-                pdf.set_font("Roboto", "", 9.5)
+                pdf.set_font(font_name, "", 9.5)
                 pdf.set_text_color(30, 30, 30)
                 pdf.set_x(20)
                 pdf.multi_cell(170, 5, f"•  {sp_clean.lstrip('*-• ')}")
@@ -169,7 +208,7 @@ def export_summary_to_pdf(
             pdf.ln(2)
 
     pdf.output(output_pdf)
-    print(f"\nĐÃ XUẤT FILE PDF TIẾNG VIỆT THÀNH CÔNG: '{output_pdf}'")
+    print(f"\n ĐÃ XUẤT FILE PDF TIẾNG VIỆT CHUẨN THÀNH CÔNG: '{output_pdf}'")
     return output_pdf
 
 
