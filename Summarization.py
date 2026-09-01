@@ -54,16 +54,16 @@ def chunk_to_text(chunk: List[Dict]) -> str:
             lines.append(f"[{ts}] {speaker}: {text}")
     return "\n".join(lines)
 
-def call_llm(prompt,timeout):
-    resp=requests.post(
+def call_llm(prompt, timeout=600):      # ← tăng mặc định lên 600s
+    resp = requests.post(
         OLLAMA_URL,
         json={
             "model": MODEL_NAME,
             "prompt": prompt,
-            "stream" : False,
+            "stream": False,
             "options": {
-                "temperature": 0.3,   # hơi sáng tạo để viết tóm tắt tự nhiên
-                "num_predict": 2048,
+                "temperature": 0.3,
+                "num_predict": 1024,    # ← giảm từ 2048 → 1024 (output ngắn hơn, nhanh hơn)
             }
         },
         timeout=timeout
@@ -85,7 +85,7 @@ INSTRUCTIONS:
 TRANSCRIPT EXCERPT (part {chunk_idx} of {total}):
 {chunk_text}
 SUMMARY IN {TARGET_LANGUAGE}:"""
-    return call_llm(prompt,timeout=180)
+    return call_llm(prompt, timeout=600)
 
 def reduce_summaries(chunk_summaries: List[str]) -> str:
 
@@ -108,7 +108,7 @@ Create the final meeting summary with these EXACT sections in {TARGET_LANGUAGE}:
 (1-2 câu kết luận)
 FINAL SUMMARY IN {TARGET_LANGUAGE}:"""
 
-    return call_llm(prompt, timeout=300)
+    return call_llm(prompt, timeout=600)
 
 def summarize_per_speaker(segments):
     speaker_text={}
@@ -128,7 +128,7 @@ def summarize_per_speaker(segments):
                         Their statements:
                         {all_text[:3000]}  
                     Write 3-5 bullet points summarizing their main contributions in {TARGET_LANGUAGE}:"""
-            summaries[sp] = call_llm(prompt,timeout=180)
+            summaries[sp] = call_llm(prompt, timeout=600)
             time.sleep(0.5)   # tránh overload
     return summaries
     
