@@ -1,6 +1,25 @@
+# Python virtual environments & IDE
 .venv/
+venv/
 __pycache__/
 .vscode/
+
+# Audio files
 *.wav
 *.mp3
-*.pt'
+*.m4a
+*.flac
+
+# Model checkpoints & cache
+*.pt
+*.bin
+*.onnx
+
+# Data & Output JSON files
+*.json
+
+# PDF outputs & font downloads
+*.pdf
+*.ttf
+meeting_summary.txt
+meeting_summary.md
