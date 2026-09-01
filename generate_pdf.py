@@ -187,7 +187,7 @@ def export_summary_to_pdf(
             pdf.ln(2)
 
     pdf.output(output_pdf)
-    print(f"\nĐÃ XUẤT FILE PDF THÀNH CÔNG: '{output_pdf}'")
+    print(f"\n🎉 ĐÃ XUẤT FILE PDF THÀNH CÔNG: '{output_pdf}'")
     return output_pdf
 
 
