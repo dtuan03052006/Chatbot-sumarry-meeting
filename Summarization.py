@@ -18,20 +18,22 @@ def load_formatted_script(json_path):
         data=json.load(f)
     return data
 
-def split_into_chunks(segments,word_limit=CHUNK_WORD_LIMIT):
-    chunks=[]
-    curr_chunk=[]
-    curr_wc=0
+def split_into_chunks(segments, word_limit=CHUNK_WORD_LIMIT):
+    chunks = []
+    curr_chunk = []
+    curr_wc = 0
     for seg in segments:
-        wc=len(seg["text_translated"].split())
+        text = seg.get("text_translated", seg.get("text", ""))
+        wc = len(text.split())
         if curr_wc + wc > word_limit and curr_chunk:
             chunks.append(curr_chunk)
-            curr_wc=0
-            curr_chunk=[]
-        curr_wc+=wc
+            curr_wc = 0
+            curr_chunk = []
+        curr_wc += wc
         curr_chunk.append(seg)
-        if(curr_chunk):
-            chunks.append(curr_chunk)
+    
+    if curr_chunk:
+        chunks.append(curr_chunk)
     return chunks
 
 def chunk_to_text(chunk: List[Dict]) -> str:
@@ -41,12 +43,11 @@ def chunk_to_text(chunk: List[Dict]) -> str:
     """
     lines = []
     for seg in chunk:
-        start  = seg.get("start", "??:??")
+        start   = seg.get("start", "??:??")
         speaker = seg.get("speaker", "UNKNOWN")
         text    = seg.get("text_translated", seg.get("text", "")).strip()
         if text:
-            # start có thể là float (giây) hoặc string (HH:MM:SS)
-            if isinstance(start, float):
+            if isinstance(start, (int, float)):
                 m, s = int(start) // 60, int(start) % 60
                 ts = f"{m:02d}:{s:02d}"
             else:
@@ -54,7 +55,7 @@ def chunk_to_text(chunk: List[Dict]) -> str:
             lines.append(f"[{ts}] {speaker}: {text}")
     return "\n".join(lines)
 
-def call_llm(prompt, timeout=600):      # ← tăng mặc định lên 600s
+def call_llm(prompt, timeout=600):
     resp = requests.post(
         OLLAMA_URL,
         json={
@@ -63,7 +64,7 @@ def call_llm(prompt, timeout=600):      # ← tăng mặc định lên 600s
             "stream": False,
             "options": {
                 "temperature": 0.3,
-                "num_predict": 1024,    # ← giảm từ 2048 → 1024 (output ngắn hơn, nhanh hơn)
+                "num_predict": 1024,
             }
         },
         timeout=timeout
@@ -88,6 +89,8 @@ SUMMARY IN {TARGET_LANGUAGE}:"""
     return call_llm(prompt, timeout=600)
 
 def reduce_summaries(chunk_summaries: List[str]) -> str:
+    if len(chunk_summaries) == 1:
+        return chunk_summaries[0]
 
     combined = "\n\n---\n\n".join(
         [f"[PHẦN {i+1}]\n{s}" for i, s in enumerate(chunk_summaries)]
@@ -111,26 +114,27 @@ FINAL SUMMARY IN {TARGET_LANGUAGE}:"""
     return call_llm(prompt, timeout=600)
 
 def summarize_per_speaker(segments):
-    speaker_text={}
+    speaker_text = {}
     for seg in segments:
-        speaker=seg.get("speaker","UNKOWN")
-        text=seg.get("text_translated",seg.get("text","")).strip()
+        speaker = seg.get("speaker", "UNKNOWN")
+        text = seg.get("text_translated", seg.get("text", "")).strip()
         if text:
             if speaker not in speaker_text:
-                speaker_text[speaker]=[]
-                speaker_text[speaker].append(text)
-        summaries={}
-        speakers=sorted(speaker_text.keys())
-        for sp in speakers:
-            all_text=" ".join(speaker_text[sp])
-            word_count=len(all_text.split())
-            prompt = f"""Summarize what {sp} said during the meeting in {TARGET_LANGUAGE}.
-                        Their statements:
-                        {all_text[:3000]}  
-                    Write 3-5 bullet points summarizing their main contributions in {TARGET_LANGUAGE}:"""
-            summaries[sp] = call_llm(prompt, timeout=600)
-            time.sleep(0.5)   # tránh overload
+                speaker_text[speaker] = []
+            speaker_text[speaker].append(text)
+            
+    summaries = {}
+    speakers = sorted(speaker_text.keys())
+    for sp in speakers:
+        all_text = " ".join(speaker_text[sp])
+        prompt = f"""Summarize what {sp} said during the meeting in {TARGET_LANGUAGE}.
+Their statements:
+{all_text[:3000]}  
+Write 3-5 bullet points summarizing their main contributions in {TARGET_LANGUAGE}:"""
+        summaries[sp] = call_llm(prompt, timeout=600)
+        time.sleep(0.5)
     return summaries
+
     
 
 def summarize_meeting(
