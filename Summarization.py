@@ -11,6 +11,7 @@ MODEL_NAME       = "gemma3:4b"
 TARGET_LANGUAGE  = "Tiếng Việt"
 CHUNK_WORD_LIMIT = 500          # số từ mỗi chunk MAP
 INPUT_JSON       = "formatted_transcript.json"
+OUTPUT_TXT       = "meeting_summary.txt"
 OUTPUT_JSON      = "meeting_summary.json"
 
 def load_formatted_script(json_path):
@@ -139,19 +140,25 @@ Write 3-5 bullet points summarizing their main contributions in {TARGET_LANGUAGE
 
 def summarize_meeting(
     input_json:   str = INPUT_JSON,
+    output_txt:   str = OUTPUT_TXT,
     output_json:  str = OUTPUT_JSON,
     target_lang:  str = TARGET_LANGUAGE,
 ) -> Dict:
-    segments=load_formatted_script(input_json)
-    chunks=split_into_chunks(segments)
-    chunks_summaries=[]
-    for idx,chunk in enumerate(chunks):
-        text=chunk_to_text(chunk)
-        summary=map_summarize_chunk(text,idx,len(chunks))
+    global TARGET_LANGUAGE
+    TARGET_LANGUAGE = target_lang
+
+    segments = load_formatted_script(input_json)
+    chunks = split_into_chunks(segments)
+    chunks_summaries = []
+    for idx, chunk in enumerate(chunks, 1):
+        text = chunk_to_text(chunk)
+        summary = map_summarize_chunk(text, idx, len(chunks))
         chunks_summaries.append(summary)
         time.sleep(1)
-    overall_summary=reduce_summaries(chunks_summaries)
-    speaker_summary=summarize_per_speaker(segments)
+
+    overall_summary = reduce_summaries(chunks_summaries)
+    speaker_summary = summarize_per_speaker(segments)
+
     result = {
         "overall_summary":  overall_summary,
         "per_speaker":       speaker_summary,
@@ -160,6 +167,22 @@ def summarize_meeting(
         "total_chunks":      len(chunks),
         "speakers":          sorted(set(s["speaker"] for s in segments)),
     }
+
+    # 1. Lưu file TXT (xuống dòng rõ ràng, dễ đọc cho con người)
+    with open(output_txt, "w", encoding="utf-8") as f:
+        f.write("=" * 60 + "\n")
+        f.write("  BIÊN BẢN TÓM TẮT CUỘC HỌP\n")
+        f.write("=" * 60 + "\n\n")
+        f.write(overall_summary.replace("\\n", "\n"))
+        f.write("\n\n" + "=" * 60 + "\n")
+        f.write("  TÓM TẮT THEO TỪNG NGƯỜI NÓI\n")
+        f.write("=" * 60 + "\n\n")
+        for sp, s in speaker_summary.items():
+            f.write(f"### {sp}\n{s.replace('\\n', '\n')}\n\n")
+
+    # 2. Lưu file JSON (dữ liệu máy đọc cho các bước tiếp theo)
     with open(output_json, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=4)
+    print(f"Saved file json and text summary: '{output_json}'")
+
     return result
