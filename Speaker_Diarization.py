@@ -16,3 +16,5 @@ def speaker_diarization(audio_path):
             "end": round(turn.end, 2), 
         })
     return segments
+
+#phan biet giong noi
